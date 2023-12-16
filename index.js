@@ -48,7 +48,14 @@ async function run() {
             const result = await roomsCollection.find({}).toArray()
             res.send(result)
         })
-
+        // get a single room
+        app.get('/room/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await roomsCollection.findOne(query)
+            console.log(result);
+            res.send(result)
+        })
 
 
         // Save a room in Database
