@@ -101,7 +101,14 @@ async function run() {
             const query = { 'guest.email': email }
             const result = await bookingsCollection.find(query).toArray()
             res.send(result)
+        })
 
+        // delete a booking
+        app.delete('/bookings/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await bookingsCollection.deleteOne(query)
+            res.send(result)
         })
 
 
