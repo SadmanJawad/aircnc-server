@@ -58,6 +58,25 @@ async function run() {
             const result = await roomsCollection.find({}).toArray()
             res.send(result)
         })
+
+        // delete room
+        app.delete('/rooms/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await roomsCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        // get filtered room for hosts
+        app.get('/rooms/:email', async (req, res) => {
+            const email = req.params.email
+            const query = { 'host.email': email }
+            const result = await roomsCollection.find(query).toArray()
+            console.log(result);
+            res.send(result)
+        })
+
+
         // get a single room
         app.get('/room/:id', async (req, res) => {
             const id = req.params.id
@@ -66,6 +85,7 @@ async function run() {
             console.log(result);
             res.send(result)
         })
+
 
 
         // Save a room in Database
