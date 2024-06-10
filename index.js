@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
+const morgan = require('morgan')
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
 
@@ -12,6 +14,8 @@ const corsOptions = {
 }
 app.use(cors(corsOptions))
 app.use(express.json())
+app.use(morgan('dev'))
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tp099ma.mongodb.net/?retryWrites=true&w=majority`
@@ -24,11 +28,25 @@ const client = new MongoClient(uri, {
     },
 })
 
+
+
 async function run() {
     try {
         const usersCollection = client.db('aircncDb').collection('users')
         const roomsCollection = client.db('aircncDb').collection('rooms')
         const bookingsCollection = client.db('aircncDb').collection('bookings')
+
+        // Generate jwt token
+        app.post('/jwt', (req, res) => {
+            const email = req.body
+            const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+                expiresIn: '1h'
+            })
+
+            console.log(token);
+            res.send({ token })
+        })
+
 
         // Save user email and role in DB
         app.put('/users/:email', async (req, res) => {
@@ -40,7 +58,7 @@ async function run() {
                 $set: user,
             }
             const result = await usersCollection.updateOne(query, updateDoc, options)
-            console.log(result);
+            // console.log(result);
             res.send(result)
         })
 
@@ -72,7 +90,7 @@ async function run() {
             const email = req.params.email
             const query = { 'host.email': email }
             const result = await roomsCollection.find(query).toArray()
-            console.log(result);
+            // console.log(result);
             res.send(result)
         })
 
@@ -82,7 +100,7 @@ async function run() {
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const result = await roomsCollection.findOne(query)
-            console.log(result);
+            // console.log(result);
             res.send(result)
         })
 
@@ -91,7 +109,7 @@ async function run() {
         // Save a room in Database
         app.post('/rooms', async (req, res) => {
             const room = req.body
-            console.log(room);
+            // console.log(room);
             const result = await roomsCollection.insertOne(room)
             res.send(result)
         })
@@ -123,6 +141,20 @@ async function run() {
             res.send(result)
         })
 
+        // get booking for HOST
+        app.get('/bookings/host', async (req, res) => {
+
+            const email = req.query.email
+
+
+            if (!email) {
+                res.send([])
+            }
+            const query = { host: email }
+            const result = await bookingsCollection.find(query).toArray()
+            res.send(result)
+        })
+
         // delete a booking
         app.delete('/bookings/:id', async (req, res) => {
             const id = req.params.id
@@ -136,7 +168,7 @@ async function run() {
         // Save a booking in Database
         app.post('/bookings', async (req, res) => {
             const booking = req.body
-            console.log(booking);
+            // console.log(booking);
             const result = await bookingsCollection.insertOne(booking)
             res.send(result)
         })
