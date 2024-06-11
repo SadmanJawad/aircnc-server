@@ -28,7 +28,29 @@ const client = new MongoClient(uri, {
     },
 })
 
+//* Validate JWT token middleware function
+const verifyJWT = (req, res, next) => {
+    const authorization = req.headers.authorization
+    if (!authorization) {
+        return res
+            .status(401).send({ error: true, message: 'Unauthorized access' })
+    }
+    console.log(authorization);
 
+    const token = authorization.split(' ')[1]
+    console.log(token);
+    // token verify
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res
+                .status(401).send({ error: true, message: 'Unauthorized access' })
+        }
+        req.decoded = decoded
+    })
+
+    next();
+
+}
 
 async function run() {
     try {
@@ -40,10 +62,9 @@ async function run() {
         app.post('/jwt', (req, res) => {
             const email = req.body
             const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
-                expiresIn: '1h'
+                expiresIn: '7d'
             })
-
-            console.log(token);
+            // console.log(token);
             res.send({ token })
         })
 
@@ -85,9 +106,15 @@ async function run() {
             res.send(result)
         })
 
-        // get filtered room for hosts
-        app.get('/rooms/:email', async (req, res) => {
+        // get  all room for hosts
+        app.get('/rooms/:email', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email
+            console.log(decodedEmail);
             const email = req.params.email
+            if (email !== decodedEmail) {
+                return res
+                    .status(403).send({ error: true, message: 'Forbidden access' })
+            }
             const query = { 'host.email': email }
             const result = await roomsCollection.find(query).toArray()
             // console.log(result);
