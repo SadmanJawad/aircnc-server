@@ -5,6 +5,8 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+
 
 // middleware
 const corsOptions = {
@@ -35,10 +37,10 @@ const verifyJWT = (req, res, next) => {
         return res
             .status(401).send({ error: true, message: 'Unauthorized access' })
     }
-    console.log(authorization);
+    // console.log(authorization);
 
     const token = authorization.split(' ')[1]
-    console.log(token);
+    // console.log(token);
     // token verify
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
@@ -57,6 +59,23 @@ async function run() {
         const usersCollection = client.db('aircncDb').collection('users')
         const roomsCollection = client.db('aircncDb').collection('rooms')
         const bookingsCollection = client.db('aircncDb').collection('bookings')
+
+        // Generate Client Secret
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body
+            // console.log(price);
+            if (price) {
+                const amount = parseFloat(price) * 100 // convert to cents
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: 'usd',
+                    payment_method_types: ['card'],
+                })
+                res.send({
+                    clientSecret: paymentIntent.client_secret,
+                })
+            }
+        })
 
         // Generate jwt token
         app.post('/jwt', (req, res) => {
@@ -109,7 +128,7 @@ async function run() {
         // get  all room for hosts
         app.get('/rooms/:email', verifyJWT, async (req, res) => {
             const decodedEmail = req.decoded.email
-            console.log(decodedEmail);
+            // console.log(decodedEmail);
             const email = req.params.email
             if (email !== decodedEmail) {
                 return res
