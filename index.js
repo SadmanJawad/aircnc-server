@@ -4,6 +4,7 @@ const morgan = require('morgan')
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
+const nodemailer = require('nodemailer')
 const port = process.env.PORT || 5000
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
@@ -53,6 +54,36 @@ const verifyJWT = (req, res, next) => {
     next();
 
 }
+
+// send mail function
+const sendMail = (emailData, emailAddress) => {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASS,
+        }
+    });
+
+    const mailOptions = {
+        from: process.env.EMAIL,
+        to: emailAddress,
+        subject: emailData.subject,
+        html: `<p>${emailData?.message}</p>`,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log('Email sent: ' + info.response);
+            // do something useful
+        }
+    });
+
+}
+
+
 
 async function run() {
     try {
@@ -216,6 +247,24 @@ async function run() {
             const booking = req.body
             // console.log(booking);
             const result = await bookingsCollection.insertOne(booking)
+            // send confirmation email to guest to email account 
+            sendMail(
+                {
+                    subject: 'Booking Successful!',
+                    message: `Booking Id: ${result?.insertedId}, TransactionId: ${booking.transactionId}`,
+                },
+                booking?.guest?.email
+            )
+
+            // send confirmation mail to host email account
+            sendMail(
+                {
+                    subject: 'Your room got booked!',
+                    message: `Booking Id: ${result?.insertedId}, TransactionId: ${booking.transactionId}. Check dashboard for more info`,
+                },
+                booking?.host
+            )
+
             res.send(result)
         })
 
